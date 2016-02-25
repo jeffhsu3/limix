@@ -48,6 +48,7 @@ limix/*/*.pyc
 *.pidb
 *.log
 *.scc
+/tmp
 
 # Visual C++ cache files
 ipch/

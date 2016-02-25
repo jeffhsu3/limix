@@ -7,6 +7,9 @@ import os
 import pdb
 import subprocess, sys, os
 import limix.deprecated.io.plink as PLINK
+from numpy import repeat
+
+from numpy import uint16
 
 
 class LIMIX_converter(object):
@@ -31,18 +34,31 @@ class LIMIX_converter(object):
     def parse_args(self):
         usage = "usage: %prog [options]"
         parser = OptionParser(usage=usage)
-        parser.add_option("-O","--outfile", action="store", dest='outfile', type=str, help='The output hdf5 file wiht the resulting data', default="example_out")
-        parser.add_option("-P","--plink",action="store", dest='plink', help="Read genotype from binary plink file (filename)", default=None)
-        parser.add_option("-G","--g012",action="store", dest='g012', help="Read genotype from 012 file generated using vcftools (filename)", default=None)
-        parser.add_option("-d","--g012_dosage",action="store", dest='g012_dosage', help="Read genotype dosage file generated using vcftools (filename)", default=None)
-        parser.add_option("-c","--chrom",action="store", dest='chrom', help="Select specific chromosome for conversion (default: all)", default=None)
-        parser.add_option("-s","--start",action="store", dest='start', help="Specify start position for conversion (default: all)", default=None)
-        parser.add_option("-e","--end",action="store", dest='end', help="Specify start position for conversion (default: all)", default=None)
+        parser.add_option("-O","--outfile", action="store", dest='outfile', 
+                type=str, help='The output hdf5 file wiht the resulting data', default="example_out")
+        parser.add_option("-P","--plink",action="store", dest='plink', 
+                help="Read genotype from binary plink file (filename)", default=None)
+        parser.add_option("-G","--g012",action="store", dest='g012', 
+                help="Read genotype from 012 file generated using vcftools (filename)", default=None)
+        parser.add_option("-d","--g012_dosage",action="store", dest='g012_dosage', 
+                help="Read genotype dosage file generated using vcftools (filename)", default=None)
+        parser.add_option("-c","--chrom",action="store", dest='chrom', 
+                help="Select specific chromosome for conversion (default: all)", default=None)
+        parser.add_option("-s","--start",action="store", dest='start', 
+                help="Specify start position for conversion (default: all)", default=None)
+        parser.add_option("-e","--end",action="store", dest='end', 
+                help="Specify start position for conversion (default: all)", default=None)
         parser.add_option("-C","--csv",action="store", dest='csv', help="Phenotype csv file", default=None)
         parser.add_option("-T","--csv_transpose",action="store_true", dest='csv_transpose', help="transpose phenotpye csv file (standard is rows: samples)", default=False)
         parser.add_option("-D","--csv_sep",action="store", dest='csv_sep', help="CSV delimiter (standard: auto)", default=None)
         parser.add_option("-S","--csv_num_samples",action="store", dest='csv_num_samples', help="Number of samples to parse (all)", default=None)
         parser.add_option("-Q","--csv_num_phenotypes",action="store", dest='csv_num_phenotypes', help="Number of phenotypes to parse (all)", default=None)
+        parser.add_option("-R", "--meQTL_geno", action="store",
+                dest="matrix_eQTL_geno", help="matrix_eQTL style genotypes")
+        parser.add_option("-A", "--snp_annot", action="store",
+                dest="snp_annot", 
+                help=("matrix_eQTL style snp annotation required for using"
+                    "the matrix_eQTL option"))
 
         (self.options, self.args) = parser.parse_args()
         self.result["options"]=str(self.options)
@@ -57,16 +73,26 @@ class LIMIX_converter(object):
 
         #read genotype plink file?
         if self.options.csv is not None:
-            self.convert_phenotype_csv(self.hdf,self.options.csv,self.options.csv_sep,self.options.csv_transpose,num_samples=self.options.csv_num_samples,num_phenotypes=self.options.csv_num_phenotypes)
+            self.convert_phenotype_csv(self.hdf,self.options.csv,
+                    self.options.csv_sep,self.options.csv_transpose,
+                    num_samples=self.options.csv_num_samples,
+                    num_phenotypes=self.options.csv_num_phenotypes)
         if self.options.plink is not None:
             self.convert_plink(self.hdf,self.options.plink,self.options.chrom,self.options.start,self.options.end)
         if self.options.g012 is not None:
             self.convert_g012(self.hdf,self.options.g012,self.options.chrom,self.options.start,self.options.end)
         if self.options.g012_dosage is not None:
-            self.convert_g012_dosage(self.hdf,self.options.g012_dosage,self.options.chrom,self.options.start,self.options.end)
+            self.convert_g012_dosage(self.hdf,self.options.g012_dosage,self.options.chrom,
+                    self.options.start,self.options.end)
+        if self.options.matrix_eQTL_geno is not None:
+            self.convert_meQTL_dosage(self.hdf, self.options.matrix_eQTL_geno,
+                    self.options.snp_annot,self.options.chrom, 
+                    self.options.start, self.options.end)
         pass
 
-    def convert_phenotype_csv(self,hdf,csv_file,sep=None,transpose=False,num_samples=None,num_phenotypes=None,*args,**kw_args):
+    def convert_phenotype_csv(self,hdf,csv_file,sep=None, 
+            transpose=False,num_samples=None,
+            num_phenotypes=None,*args,**kw_args):
         """
         convert phenotype csv file to LIMIX hdf5
 
@@ -176,11 +202,48 @@ class LIMIX_converter(object):
         col_header.create_dataset(name='IMP2',data=impute)
         M = sp.loadtxt(g012_file,dtype='float')
         snps = M[:,:-1]
-        genotype.create_dataset(name='matrix',data=snps,chunks=(snps.shape[0],min(10000,snps.shape[1])),compression='gzip')
+        genotype.create_dataset(name='matrix',data=snps,
+                chunks=(snps.shape[0],min(10000,snps.shape[1])),
+                compression='gzip')
+        pass
+
+    def convert_meQTL_dosage(self, hdf, matrix_eQTL_dosage, 
+            snp_annotation, chrom, start, end):
+        """Convert
+        """
+        if 'genotype' in hdf.keys():
+            del(hdf['genotype'])
+        genotype = hdf.create_group('genotype')
+        col_header = genotype.create_group('col_header')
+        row_header = genotype.create_group('row_header')
+        snp_annot = pandas.read_pickle(snp_annotation)
+        chrom = repeat(int(chrom), snp_annot.shape[0])
+        with open(matrix_eQTL_dosage) as f:
+            header = f.readline().split(' ')
+            ncol = len(header)
+        col_header.create_dataset(name='chrom', data = chrom)
+        col_header.create_dataset(name='pos',
+                data=snp_annot['pos'].astype(uint16))
+        gid = snp_annot.index.values.copy()
+        gid = gid.astype('|S16')
+        col_header.create_dataset(name='gdid',
+                data=gid)
+        refa = snp_annot['a0'].values.astype('|S8')
+        col_header.create_dataset(name='ref', 
+                data=refa)
+        alta = snp_annot['a1'].values.astype('|S8')
+        col_header.create_dataset(name='alt', 
+                data=alta)
+        row_header.create_dataset(name='sample_ID', data=header)
+        M = sp.loadtxt(matrix_eQTL_dosage,  skiprows=1, usecols=range(1,ncol),
+                dtype='float')
+        assert(snp_annot.shape[0] == M.shape[0])
+        genotype.create_dataset(name='matrix', data=M, chunks=(M.shape[0],
+            min(10000, M.shape[1])), compression='gzip')
         pass
 
     def convert_plink(self,hdf,bed_file,chrom,start,end):
-        """convert plink file to LIMIX hdf5
+        """Convert plink file to LIMIX hdf5
         hdf: handle for hdf5 file (target)
         bed_file: filename of bed file
         chrom: select chromosome for conversion
