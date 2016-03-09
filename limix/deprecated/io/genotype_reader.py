@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import scipy as sp
+import numpy as np
 import limix.deprecated.io.data_util as du
 import pandas as pd
+import h5py
+
 
 class genotype_reader_h5py():
-    """
-    a genotype reader using the HDF5 interface.
+    """A genotype reader using the HDF5 interface.
     """
 
     def __init__(self,file_name):
@@ -26,13 +28,15 @@ class genotype_reader_h5py():
         self.load()
 
     def load(self,cache_genotype=False,cache_phenotype=True):
-        """load data file
+        """Load data file
 
-        Args:
-            cache_genotype:     load genotypes fully into memory (default: False)
-            cache_phenotype:    load phentopyes fully intro memry (default: True)
+        Parameters
+        ----------
+        cache_genotype : boolean
+            load genotypes fully into memory (default: False)
+        cache_phenotype : 
+            load phentopyes fully intro memry (default: True)
         """
-        import h5py
         self.f = h5py.File(self.file_name,'r')
         self.geno  = self.f['genotype']
 
@@ -53,7 +57,7 @@ class genotype_reader_h5py():
         if 'geno_ID' in self.geno['col_header'].keys():
             self.geno_ID   = self.geno['col_header']['geno_ID'][:]
         else:
-            self.geno_ID =  sp.arange(self.num_snps)
+            self.geno_ID =  np.arange(self.num_snps)
 
         #cache?
         if cache_genotype:
@@ -61,27 +65,39 @@ class genotype_reader_h5py():
         self.position=pd.DataFrame(data=position,index=self.geno_ID)
 
 
-    def getGenotypes(self,sample_idx=None,idx_start=None,idx_end=None,chrom=None,pos_start=None,pos_end=None,center=True,unit=True,impute_missing=False,snp_idx=None,windowsize=0):
-        """load genotypes.
+    def getGenotypes(self, sample_idx=None, idx_start=None, idx_end=None,
+            chrom=None, pos_start=None, pos_end=None, center=True, unit=True,
+            impute_missing=False, snp_idx=None,windowsize=0):
+        """Load genotypes.
         Optionally the indices for loading subgroups the genotypes for all people
         based on position of cumulative position.
         Positions can be given as (pos_start-pos_end on chrom)
         If both of these are None (default), then all genotypes are returned
 
-        Args:
-            idx_start:         genotype index based selection (start index)
-            idx_end:         genotype index based selection (end index)
-            chrom:          chromosome based selection (return whole chromosome)
-            pos_start:       position based selection (start position) tuple of chrom, position
-            pos_end:       position based selection (end position) tuple of chrom, position
-            impute_missing: Boolean indicator variable if missing values should be imputed
+        Parameters
+        ----------
+        idx_start : 
+            genotype index based selection (start index)
+        idx_end :
+            genotype index based selection (end index)
+        pos_start : int 
+            position based selection (start position) tuple of chrom, position
+        pos_end : int
+            position based selection (end position) tuple of chrom, position
+        chrom : 
+            chromosome based selection (return whole chromosome)
+        impute_missing:  boolean
+            Boolean indicator variable if missing values should be imputed
 
-        Returns:
-            X:          scipy.array of genotype values
+        Returns
+        -------
+        X: np.array of genotype values
         """
         #position based matching?
-        if (idx_start is None) and (idx_end is None) and ((pos_start is not None) & (pos_end is not None)):
-            idx_start,idx_end=self.getGenoIndex(chrom=chrom,pos_start=pos_start,pos_end=pos_end,windowsize=windowsize)
+        if (idx_start is None) and (idx_end is None) and\
+                ((pos_start is not None) & (pos_end is not None)):
+            idx_start, idx_end=self.getGenoIndex(chrom=chrom,
+                    pos_start=pos_start,pos_end=pos_end,windowsize=windowsize)
         #index based matching?
         if (idx_start is not None) & (idx_end is not None):
             X = self.geno_matrix[:,idx_start:idx_end]
@@ -95,31 +111,41 @@ class genotype_reader_h5py():
             X = du.imputeMissing(X,center=center,unit=unit)
         return X
 
-    def getGenoIndex(self,pos_start=None,pos_end=None,windowsize=0):
-        """computes 0-based genotype index from position of cumulative position.
+    def getGenoIndex(self, chrom=None,  pos_start=None, pos_end=None, 
+            windowsize=0):
+        """Computes 0-based genotype index from position of cumulative position.
         Positions can be given as (pos_start-pos_end on chrom)
         If both of these are None (default), then all genotypes are returned
 
-        Args:
-            chrom:          chromosome based selection (return whole chromosome)
-            pos_start:      position based selection (start position) tuple of chrom, position
-            pos_end:        position based selection (end position) tuple of chrom, position
-            windowsize:     additionally include a flanking window around the selected positions (default 0)
+        Parameters
+        ----------
+        chrom : string
+            chromosome based selection (return whole chromosome)
+        pos_start : int 
+            position based selection (start position) tuple of chrom, position
+        pos_end : int 
+            position based selection (end position) tuple of chrom, position
+        windowsize: 
+            additionally include a flanking window around the selected positions (default 0)
 
-        Returns:
-            idx_start:         genotype index based selection (start index)
-            idx_end:         genotype index based selection (end index)
+        Returns
+        -------
+        idx_start : int 
+            genotype index based selection (start index)
+        idx_end : int
+            genotype index based selection (end index)
         """
         if (pos_start is not None) & (pos_end is not None):
-            assert pos_start[0]==pos_end[0],   "getGenoIndex only supports selection on a single chromosome"
+            assert pos_start[0]==pos_end[0], ("getGenoIndex only supports" 
+                "selection on a single chromosome")
             I = self.position["chrom"]==pos_start[0]
-            I = I & (self.postion["pos"]>=(pos_start[1]-windowsize)) & (self.position["pos"]<(pos_end[1]+windowsize))
-            I =  sp.nonzero(I)[0]
+            I = I & (self.postion["pos"]>=(pos_start[1]-windowsize)) &\
+                    (self.position["pos"]<(pos_end[1]+windowsize))
+            I =  np.nonzero(I)[0]
             idx_start = I.min()
             idx_end = I.max()
         elif (chrom is not None):
             I = self.position["chrom"]==chrom
-
             idx_start = I.min()
             idx_end = I.max()
         else:
@@ -127,45 +153,78 @@ class genotype_reader_h5py():
             idx_end=None
         return idx_start,idx_end
 
-    def getCovariance(self,sample_idx=None,normalize=True,idx_start=None,idx_end=None,pos_start=None,pos_end=None,chrom=None,center=True,unit=True,blocksize=None,X=None,snp_idx=None,windowsize=0,**kw_args):
-        """calculate the empirical genotype covariance in a region"""
-        if X is not None:
-            if X.dtype!= sp.float64:
-                X= sp.array(X,dtype= sp.float64)
-            K=X.dot(X.T)
-            Nsnp=X.shape[1]
-        else:
-            if (idx_start is None) and (idx_end is None) and ((pos_start is not None) & (pos_end is not None) ) and (chrom is not None):
-                idx_start,idx_end=self.getGenoIndex(pos_start=pos_start,pos_end=pos_end,chrom=chrom,pos_cum_start=pos_cum_start,windowsize=windowsize)
+    def getCovariance(self, sample_idx=None, normalize=True, idx_start=None,
+            idx_end=None, pos_start=None, pos_end=None, chrom=None, center=True,
+            unit=True, blocksize=None, X=None, snp_idx=None,
+            windowsize=0,**kw_args):
+        """Calculate the empirical genotype covariance in a region
 
-            [N,M]=self.geno_matrix.shape
+        :TODO add some of params to keyword args
+
+        Parameters
+        ----------
+        sample_idx : int? 
+            index of samples to use
+        normalize : bool 
+            whether to normalize or not
+        idx_start : 
+            index of start
+        idx_end : 
+            index of end
+        X : ???
+            unknown
+        center : ???
+            unknown (default None)
+        windowsize : ???
+            unknown
+
+        Returns
+        -------
+        K : np.array
+           covariance
+        """
+        idx_notset = (idx_start is None) and (idx_end is None)
+        pos_set = ((pos_start is not None) & (pos_end is not None) )
+        if X is not None:
+            if X.dtype != np.float64:
+                X = np.array(X, dtype=np.float64)
+            K = X.dot(X.T)
+            Nsnp = X.shape[1]
+        else:
+            if idx_notset and pos_set and (chrom is not None):
+                idx_start, idx_end = self.getGenoIndex(pos_start=pos_start,
+                        pos_end=pos_end, chrom=chrom,
+                        pos_cum_start=pos_cum_start,
+                        windowsize=windowsize)
+            [N, M] = self.geno_matrix.shape
             if blocksize is None:
                 blocksize=M
-            if idx_start is None:
-                idx_start=0
-            if idx_end is None:
-                idx_end=M
+            if idx_start is None: idx_start=0
+            if idx_end is None: idx_end=M
             nread = idx_start
-            K=None
-            Nsnp=idx_end-idx_start
-            while nread<idx_end:
-                thisblock=min(blocksize,idx_end-nread)
-                X=self.getGenotypes(sample_idx=sample_idx,idx_start=nread,idx_end=(nread+thisblock),center=center,unit=unit,impute_missing=True,**kw_args)
-                if X.dtype!= sp.float64:
-                    X= sp.array(X,dtype= sp.float64)
+            K =None
+            Nsnp = idx_end - idx_start
+            while nread < idx_end:
+                thisblock = min(blocksize, idx_end-nread)
+                X = self.getGenotypes(sample_idx=sample_idx,idx_start=nread,
+                        idx_end=(nread+thisblock),center=center,unit=unit,
+                        impute_missing=True,**kw_args)
+                if X.dtype!= np.float64:
+                    X= sp.array(X, dtype=np.float64)
                 if K is None:
-                    K=X.dot(X.T)
+                    K = X.dot(X.T)
                 else:
-                    K+=X.dot(X.T)
-                nread+=thisblock
+                    K += X.dot(X.T)
+                nread += thisblock
         if normalize:
             K/=(K.diagonal().mean())
         #else:#divide by number of SNPs in K
         #    K/=Nsnp
         return K
 
-    def getGenoID(self,snp_idx=None,idx_start=None,idx_end=None,pos_start=None,pos_end=None,chrom=None,pos_cum_start=None,pos_cum_end=None):
-        """get genotype IDs.
+    def getGenoID(self, snp_idx=None, idx_start=None, idx_end=None, pos_start=None,
+            pos_end=None, chrom=None, pos_cum_start=None, pos_cum_end=None):
+        """Get genotype IDs.
         Optionally the indices for loading subgroups the genotype IDs for all people
         can be given in one out of three ways:
         - 0-based indexing (idx_start-idx_end)
@@ -173,21 +232,35 @@ class genotype_reader_h5py():
         - cumulative position (pos_cum_start-pos_cum_end)
         If all these are None (default), then all genotypes are returned
 
-        Args:
-            idx_start:         genotype index based selection (start index)
-            idx_end:         genotype index based selection (end index)
-            pos_start:       position based selection (start position)
-            pos_end:       position based selection (end position)
-            chrom:      position based selection (chromosome)
-            pos_cum_start:   cumulative position based selection (start position)
-            pos_cum_end:   cumulative position based selection (end position)
+        Parameters
+        ----------
+        idx_start : int 
+            genotype index based selection (start index)
+        idx_end : int
+            genotype index based selection (end index)
+        chrom : string
+            position based selection (chromosome)
+        pos_start : int
+            position based selection (start position)
+        pos_end : int
+            position based selection (end position)
+        pos_cum_start : int
+            cumulative position based selection (start position)
+        pos_cum_end : int
+            cumulative position based selection (end position)
 
-        Returns:
-            ID:         scipy.array of genotype IDs (e.g. rs IDs)
+        Returns
+        -------
+        ID : np.array of genotype IDs (e.g. rsIDs)
         """
+        idx_set = (idx_start is None) and (idx_end is None)
         #position based matching?
-        if (idx_start is None) and (idx_end is None) and ((pos_start is not None) & (pos_end is not None) & (chrom is not None)) or ((pos_cum_start is not None) & (pos_cum_end is not None)):
-            idx_start,idx_end=self.getGenoIndex(pos_start=pos_start,pos_end=pos_end,chrom=chrom,pos_cum_start=pos_cum_start,pos_cum_end=pose_cum1)
+        if idx_set and ((pos_start is not None) & (pos_end is not None) &\
+                (chrom is not None)) or ((pos_cum_start is not None) &\
+                (pos_cum_end is not None)):
+            idx_start, idx_end = self.getGenoIndex(pos_start=pos_start,
+                    pos_end=pos_end,chrom=chrom,pos_cum_start=pos_cum_start,
+                    pos_cum_end=pos_cum_end)
         if "genotype_id" in self.geno.keys():
             if (idx_start is not None) & (idx_end is not None):
                 return self.geno["genotype_id"][idx_start:idx_end]
@@ -203,32 +276,50 @@ class genotype_reader_h5py():
             else:
                 return  sp.arange(self.geno_matrix.shape[1])
 
-    def getPos(self,idx_start=None,idx_end=None,pos_start=None,pos_end=None,chrom=None,pos_cum_start=None,pos_cum_end=None):
+    def getPos(self,idx_start=None,idx_end=None,
+            pos_start=None,pos_end=None,chrom=None,
+            pos_cum_start=None,pos_cum_end=None):
+        """Get the positions of the genotypes
+        Returns
+        -------
+        chromosome : 
+        position :
+        cumulative_position :
         """
-        get the positions of the genotypes
-
-        Returns:
-            chromosome
-            position
-            cumulative_position
-        """
-        if (idx_start is None) and (idx_end is None) and ((pos_start is not None) & (pos_end is not None) & (chrom is not None)) or ((pos_cum_start is not None) & (pos_cum_end is not None)):
-            idx_start,idx_end=self.getGenoIndex(pos_start=pos_start,pos_end=pos_end,chrom=chrom,pos_cum_start=pos_cum_start,pos_cum_end=pose_cum1)
+        if (idx_start is None) and (idx_end is None)\
+                and ((pos_start is not None) & (pos_end is not None) &\
+                (chrom is not None)) or ((pos_cum_start is not None) &\
+                (pos_cum_end is not None)):
+            idx_start,idx_end=self.getGenoIndex(pos_start=pos_start,
+                    pos_end=pos_end,chrom=chrom,
+                    pos_cum_start=pos_cum_start,
+                    pos_cum_end=pos_cum_end)
         if (idx_start is not None) & (idx_end is not None):
             return self.position.iloc[idx_start:idx_end]
-        elif snp_idx is not None:
-            return self.position.iloc[snp_idx]
         else:
             return self.position
+        '''
+        elif snp_idx is not None:
+            return self.position.iloc[snp_idx]
+        '''
 
 
     def getIcis_geno(self,geneID,cis_window=50E3):
-        """ if eqtl==True it returns a bool vec for cis """
+        """If eqtl==True it returns a bool vec for cis 
+        """
+
         assert self.eqtl == True, 'Only for eqtl data'
         index = self.geneID==geneID
         [_chrom,_gene_start,_gene_start] = self.gene_pos[index][0,:]
-        Icis = (self.geno_chrom==_chrom)*(self.geno_pos>=_gene_start-cis_window)*(self.geno_pos<=_gene_start+cis_window)
+        Icis = (self.geno_chrom==_chrom)*(self.geno_pos>=\
+                _gene_start-cis_window)*(self.geno_pos<=\
+                _gene_start+cis_window)
         return Icis
+
+
+#:TODO reduce redundency
+class Genotype_Reader_Tables():
+    pass
 
 class genotype_reader_tables():
     def __init__(self,file_name):
@@ -275,7 +366,10 @@ class genotype_reader_tables():
 
 
 
-    def getGenotypes(self,sample_idx=None,idx_start=None,idx_end=None,pos_start=None,pos_end=None,chrom=None,center=True,unit=True,pos_cum_start=None,pos_cum_end=None,impute_missing=False,snp_idx=None):
+    def getGenotypes(self,sample_idx=None,idx_start=None,
+            idx_end=None, pos_start=None, pos_end=None,chrom=None,
+            center=True,unit=True,pos_cum_start=None,
+            pos_cum_end=None,impute_missing=False,snp_idx=None):
         """load genotypes.
         Optionally the indices for loading subgroups the genotypes for all people
         can be given in one out of three ways:
@@ -348,7 +442,7 @@ class genotype_reader_tables():
             idx_end=None
         return idx_start,idx_end
 
-    def getCovariance(self,sample_idx=None,normalize=False,idx_start=None,idx_end=None,pos_start=None,pos_end=None,chrom=None,windowsize=0,center=True,unit=True,blocksize=5000,X=None,snp_idx=None,**kw_args):
+    def getCovariance(self, sample_idx=None,normalize=False,idx_start=None,idx_end=None,pos_start=None,pos_end=None,chrom=None,windowsize=0,center=True,unit=True,blocksize=5000,X=None,snp_idx=None,**kw_args):
         """calculate the empirical genotype covariance in a region"""
         if X is not None:
             if X.dtype!= sp.float64:
@@ -385,7 +479,8 @@ class genotype_reader_tables():
         #    K/=Nsnp
         return K
 
-    def getGenoID(self,snp_idx=None,idx_start=None,idx_end=None,pos_start=None,pos_end=None,chrom=None,windowsize=0):
+    def getGenoID(self,snp_idx=None,idx_start=None,idx_end=None,
+            pos_start=None,pos_end=None,chrom=None,windowsize=0):
         """get genotype IDs.
         Optionally the indices for loading subgroups the genotype IDs for all people
         can be given in one out of three ways:
@@ -393,20 +488,21 @@ class genotype_reader_tables():
         - position (pos_start-pos_end on chrom)
         - cumulative position (pos_cum_start-pos_cum_end)
         If all these are None (default), then all genotypes are returned
-
         Args:
             idx_start:         genotype index based selection (start index)
             idx_end:         genotype index based selection (end index)
             pos_start:       position based selection (start position)
             pos_end:       position based selection (end position)
             chrom:      position based selection (chromosome)
-
         Returns:
             ID:         scipy.array of genotype IDs (e.g. rs IDs)
         """
         #position based matching?
-        if (idx_start is None) and (idx_end is None) and ((pos_start is not None) & (pos_end is not None) ) or (chrom is not None):
-            idx_start,idx_end=self.getGenoIndex(pos_start=pos_start,pos_end=pos_end,chrom=chrom,windowsize=windowsize)
+        if (idx_start is None) and (idx_end is None) and\
+                ((pos_start is not None) & (pos_end is not None) ) or\
+                (chrom is not None):
+            idx_start, idx_end=self.getGenoIndex(pos_start=pos_start,
+                    pos_end=pos_end,chrom=chrom,windowsize=windowsize)
         if "genotype_id" in self.geno:
             if (idx_start is not None) & (idx_end is not None):
                 return self.geno.genotype_id[idx_start:idx_end]
@@ -422,7 +518,8 @@ class genotype_reader_tables():
             else:
                 return  sp.arange(self.geno_matrix.shape[1])
 
-    def getPos(self,idx_start=None,idx_end=None,snp_idx=None,pos_start=None,pos_end=None,chrom=None,windowsize=0):
+    def getPos(self,idx_start=None,idx_end=None,snp_idx=None,
+            pos_start=None,pos_end=None,chrom=None,windowsize=0):
         """
         get the positions of the genotypes
 
@@ -431,8 +528,11 @@ class genotype_reader_tables():
             position
             cumulative_position
         """
-        if (idx_start is None) and (idx_end is None) and ((pos_start is not None) & (pos_end is not None) ) or (chrom is not None):
-            idx_start,idx_end=self.getGenoIndex(pos_start=pos_start,pos_end=pos_end,chrom=chrom,windowsize=windowsize)
+        if (idx_start is None) and (idx_end is None) and\
+                ((pos_start is not None) & (pos_end is not None) ) or\
+                (chrom is not None):
+            idx_start,idx_end=self.getGenoIndex(pos_start=pos_start,
+                    pos_end=pos_end,chrom=chrom,windowsize=windowsize)
         if (idx_start is not None) & (idx_end is not None):
             return self.position.iloc[idx_start:idx_end]
         elif snp_idx is not None:

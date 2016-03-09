@@ -208,19 +208,29 @@ class LIMIX_converter(object):
         pass
 
     def convert_meQTL_dosage(self, hdf, matrix_eQTL_dosage, 
-            snp_annotation, chrom, start, end):
-        """Convert
+            snp_annotation, chrom, start, end, add=False):
+        """Convert matrix-eQTL input for limix
+        Parameters
+        ----------
+        Return
+        ------
+        None
         """
-        if 'genotype' in hdf.keys():
+        if 'genotype' in hdf.keys() and not add:
             del(hdf['genotype'])
-        genotype = hdf.create_group('genotype')
-        col_header = genotype.create_group('col_header')
-        row_header = genotype.create_group('row_header')
+        elif add:
+            pass
+        else:
+            genotype = hdf.create_group('genotype')
+            col_header = genotype.create_group('col_header')
+            row_header = genotype.create_group('row_header')
         snp_annot = pandas.read_pickle(snp_annotation)
         chrom = repeat(int(chrom), snp_annot.shape[0])
         with open(matrix_eQTL_dosage) as f:
             header = f.readline().split(' ')
             ncol = len(header)
+            print(ncol)
+        row_header.create_dataset(name='sample_ID', data=header)
         col_header.create_dataset(name='chrom', data = chrom)
         col_header.create_dataset(name='pos',
                 data=snp_annot['pos'].astype(uint16))
@@ -234,26 +244,34 @@ class LIMIX_converter(object):
         alta = snp_annot['a1'].values.astype('|S8')
         col_header.create_dataset(name='alt', 
                 data=alta)
-        row_header.create_dataset(name='sample_ID', data=header)
-        M = sp.loadtxt(matrix_eQTL_dosage,  skiprows=1, usecols=range(1,ncol),
-                dtype='float')
-        assert(snp_annot.shape[0] == M.shape[0])
+        M = sp.loadtxt(matrix_eQTL_dosage,  skiprows=1, 
+                usecols=range(1,ncol), dtype='float').T
+        print(M.shape)
+        #assert(snp_annot.shape[0] == M.shape[0])
         genotype.create_dataset(name='matrix', data=M, chunks=(M.shape[0],
             min(10000, M.shape[1])), compression='gzip')
         pass
 
-    def convert_plink(self,hdf,bed_file,chrom,start,end):
+    def convert_plink(self, hdf, bed_file, chrom, start, end):
         """Convert plink file to LIMIX hdf5
-        hdf: handle for hdf5 file (target)
-        bed_file: filename of bed file
-        chrom: select chromosome for conversion
-        start: select start position for conversion
-        end:  select end position for conversion
+
+        Parameters
+        ----------
+        hdf : h5py.File
+            handle for hdf5 file (target)
+        bed_file : filename of bed file
+        chrom : select chromosome for conversion
+        start : select start position for conversion
+        end :  select end position for conversion
+
+        Returns
+        -------
+        None
         """
         #TODO: check that this is a valid plink file
         #start_pos?
         startpos = None
-        endpos   = None
+        endpos = None
         if (start is not None) or (end is not None):
             if chrom is None:
                 raise Exception('start or end pos specification requires a target chromosome')
@@ -261,7 +279,6 @@ class LIMIX_converter(object):
             startpos = [chrom,0,start]
         if end is not None:
             endpos = [chrom,0,end]
-
         #read
         data=PLINK.readBED(bed_file,startpos=startpos,endpos=endpos)
         #store
@@ -271,7 +288,8 @@ class LIMIX_converter(object):
         col_header = genotype.create_group('col_header')
         row_header = genotype.create_group('row_header')
         #write genotype
-        genotype.create_dataset(name='matrix',data=data['snps'],chunks=(data['snps'].shape[0],min(10000,data['snps'].shape[1])))
+        genotype.create_dataset(name='matrix',data=data['snps'],
+                chunks=(data['snps'].shape[0],min(10000,data['snps'].shape[1])))
         #write row header
         row_header.create_dataset(name='sample_ID',data=data['iid'][:,0])
         #write col header
