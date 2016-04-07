@@ -76,9 +76,10 @@ class genotype_reader_h5py():
 
         Parameters
         ----------
-        idx_start : 
+        sample_idx : ?
+        idx_start : ?
             genotype index based selection (start index)
-        idx_end :
+        idx_end :?
             genotype index based selection (end index)
         pos_start : int 
             position based selection (start position) tuple of chrom, position
@@ -93,20 +94,21 @@ class genotype_reader_h5py():
         -------
         X: np.array of genotype values
         """
-        #position based matching?
-        if (idx_start is None) and (idx_end is None) and\
-                ((pos_start is not None) & (pos_end is not None)):
+        idx_set = (idx_start is not None) or (idx_end is not None)
+        pos_set = (pos_start is not None) and (pos_end is not None)
+        if not idx_set and pos_set:
             idx_start, idx_end=self.getGenoIndex(chrom=chrom,
-                    pos_start=pos_start,pos_end=pos_end,windowsize=windowsize)
+                    pos_start=pos_start,pos_end=pos_end,
+                    windowsize=windowsize)
         #index based matching?
-        if (idx_start is not None) & (idx_end is not None):
+        if (pos_start is not None) and (pos_end is not None):
             X = self.geno_matrix[:,idx_start:idx_end]
         elif snp_idx is not None:
             X = self.geno_matrix[:,snp_idx]
         else:
             X = self.geno_matrix[:,:]
         if sample_idx is not None:
-            X=X[sample_idx]
+            X = X[sample_idx]
         if impute_missing:
             X = du.imputeMissing(X,center=center,unit=unit)
         return X
@@ -160,7 +162,6 @@ class genotype_reader_h5py():
         """Calculate the empirical genotype covariance in a region
 
         :TODO add some of params to keyword args
-
         Parameters
         ----------
         sample_idx : int? 
@@ -173,6 +174,8 @@ class genotype_reader_h5py():
             index of end
         X : ???
             unknown
+        blocksize: ???
+            unknown
         center : ???
             unknown (default None)
         windowsize : ???
@@ -183,34 +186,41 @@ class genotype_reader_h5py():
         K : np.array
            covariance
         """
-        idx_notset = (idx_start is None) and (idx_end is None)
+        idx_set = (idx_start is not None) or (idx_end is not None)
         pos_set = ((pos_start is not None) & (pos_end is not None) )
         if X is not None:
             if X.dtype != np.float64:
                 X = np.array(X, dtype=np.float64)
             K = X.dot(X.T)
-            Nsnp = X.shape[1]
+            #Nsnp = X.shape[1]
         else:
-            if idx_notset and pos_set and (chrom is not None):
+            if not idx_set and pos_set and (chrom is not None):
                 idx_start, idx_end = self.getGenoIndex(pos_start=pos_start,
                         pos_end=pos_end, chrom=chrom,
                         pos_cum_start=pos_cum_start,
                         windowsize=windowsize)
+            else: pass
             [N, M] = self.geno_matrix.shape
             if blocksize is None:
                 blocksize=M
             if idx_start is None: idx_start=0
             if idx_end is None: idx_end=M
             nread = idx_start
-            K =None
-            Nsnp = idx_end - idx_start
+            K = None
+            #Nsnp = idx_end - idx_start
             while nread < idx_end:
                 thisblock = min(blocksize, idx_end-nread)
-                X = self.getGenotypes(sample_idx=sample_idx,idx_start=nread,
-                        idx_end=(nread+thisblock),center=center,unit=unit,
-                        impute_missing=True,**kw_args)
+                if len(sample_idx) == 0:
+                    X = self.getGenotypes(idx_start=nread,
+                            idx_end=(nread+thisblock),center=center,unit=unit,
+                            impute_missing=True,**kw_args)
+                else:
+                    X = self.getGenotypes(sample_idx=sample_idx,idx_start=nread,
+                            idx_end=(nread+thisblock),center=center,unit=unit,
+                            impute_missing=True,**kw_args)
                 if X.dtype!= np.float64:
-                    X= sp.array(X, dtype=np.float64)
+                    X= np.array(X, dtype=np.float64)
+                print(X.shape)
                 if K is None:
                     K = X.dot(X.T)
                 else:
@@ -442,7 +452,9 @@ class genotype_reader_tables():
             idx_end=None
         return idx_start,idx_end
 
-    def getCovariance(self, sample_idx=None,normalize=False,idx_start=None,idx_end=None,pos_start=None,pos_end=None,chrom=None,windowsize=0,center=True,unit=True,blocksize=5000,X=None,snp_idx=None,**kw_args):
+    def getCovariance(self, sample_idx=None,normalize=False,idx_start=None,
+            idx_end=None,pos_start=None, pos_end=None,chrom=None,windowsize=0,
+            center=True,unit=True,blocksize=5000, X=None,snp_idx=None,**kw_args):
         """calculate the empirical genotype covariance in a region"""
         if X is not None:
             if X.dtype!= sp.float64:

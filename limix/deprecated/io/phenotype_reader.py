@@ -50,19 +50,24 @@ class pheno_reader_tables():
         for child in headers:
             if child._v_name=="phenotype_ID":
                 pass
-                #TODO: OS, I removed this as the whole things otherwise crashes if there are no headers
+                #TODO: OS, I removed this as the whole things otherwise crashes 
+                #if there are no headers
                 #continue
             child_names.append(child._v_name)
             child_arrays.append(child[:])
         multiindex = pd.MultiIndex.from_arrays(arrays=child_arrays,names=child_names)
-        self.index_frame = pd.DataFrame(data=SP.arange(self.pheno_matrix.shape[1]),index = multiindex)
-        self.headers_frame = pd.DataFrame(data=SP.array(child_arrays).T,index=self.phenotype_ID,columns=child_names)
+        self.index_frame = pd.DataFrame(data=SP.arange(self.pheno_matrix.shape[1]),
+                index = multiindex)
+        self.headers_frame = pd.DataFrame(data=SP.array(child_arrays).T,
+                index=self.phenotype_ID,columns=child_names)
 
         if 'gene_ID' in headers:
             self.eqtl = True
             self.gene_ID = self.pheno.col_header.gene_ID[:]
-            self.gene_pos_start = SP.array([self.pheno.col_header.gene_chrom[:],self.pheno.col_header.gene_start[:]],dtype='int').T
-            self.gene_pos_end = SP.array([self.pheno.col_header.gene_chrom[:],self.pheno.col_header.gene_end[:]],dtype='int').T
+            self.gene_pos_start = SP.array([self.pheno.col_header.gene_chrom[:],
+                self.pheno.col_header.gene_start[:]],dtype='int').T
+            self.gene_pos_end = SP.array([self.pheno.col_header.gene_chrom[:],
+                self.pheno.col_header.gene_end[:]],dtype='int').T
             self.gene_ID_list= list(set(self.gene_ID))
         else:
             self.eqtl = False
@@ -77,21 +82,34 @@ class pheno_reader_tables():
         self.P = self.pheno_matrix.shape[1]
 
 
-    def getPhenotypes(self,phenotype_IDs=None,phenotype_query=None,sample_idx=None,center=True,intersection=False):
-        """load Phenotypes
+    def getPhenotypes(self,phenotype_IDs=None,phenotype_query=None,
+            sample_idx=None,center=True,intersection=False):
+        """Load phenotypes
 
-        Args:
-            phenotype_IDs:      names of phenotypes to load
-            phenotype_query:    string hoding a pandas query (e.g. "(environment==1) & (phenotype_ID=='growth')"
-                                selects all phenotypes that have a phenotype_ID equal to growth under environment 1.
-            sample_idx:         Boolean sample index for subsetting individuals
-            center:             Boolean: mean center (and mean-fill in missing values if intersection==False)? (default True)
-            impute:             imputation of missing values (default: True)
-            intersection:       restrict observation to those obseved in all phenotypes? (default: False)
+        Parameters
+        ----------
+        phenotype_IDs:      
+            names of phenotypes to load
+        phenotype_query:    
+            string hoding a pandas query (e.g. "(environment==1) & (phenotype_ID=='growth')"
+            selects all phenotypes that have a phenotype_ID equal to 
+            growth under environment 1.
+        sample_idx:         
+            Boolean sample index for subsetting individuals
+        center:             
+            Boolean: mean center (and mean-fill in missing values if 
+            intersection==False)? (default True)
+        impute:
+            imputation of missing values (default: True)
+        intersection:
+            restrict observation to those obseved in all  phenotypes? (default: False)
 
-        Returns:
-            phenotypes:     [N x P] scipy.array of phenotype values for P phenotypes
-            sample_idx_intersect:        index of individuals in phenotypes after filtering missing valuesS
+        Returns
+        -------
+        phenotypes:
+            [N x P] scipy.array of phenotype values for P phenotypes
+        sample_idx_intersect:
+            index of individuals in phenotypes after filtering missing valuesS
         """
         if phenotype_IDs is not None:
             I = SP.array([SP.nonzero(self.phenotype_ID==n)[0][0] for n in phenotype_IDs])
@@ -130,7 +148,8 @@ class pheno_reader_tables():
                 phenotypes[:,i] -= ym
                 phenotypes[~Iok[:,i],i] = ym
                 phenotypes[:,i] /= phenotypes[:,i].std()
-        phenotypes = pd.DataFrame(data=phenotypes, index=self.sample_ID[sample_idx_intersect],columns=self.phenotype_ID[I])
+        phenotypes = pd.DataFrame(data=phenotypes, index=self.sample_ID[sample_idx_intersect],
+                columns=self.phenotype_ID[I])
         #calculate overlap of missing values
         return phenotypes, sample_idx_intersect
 
@@ -201,17 +220,25 @@ class pheno_reader_h5py_deprecated():
         self.P = self.pheno_matrix.shape[1]
         #self.pheno_df = pd.DataFrame(data=self.pheno_matrix,index=self.sample_ID,columns=self.phenotype_ID)
 
-    def getPhenotypes_df(self,sample_idx=None,phenotype_IDs=None,center=True,impute=True,intersection=False):
+    def getPhenotypes_df(self,sample_idx=None,phenotype_IDs=None,
+            center=True,impute=True,intersection=False):
         """load Phenotypes
 
-        Args:
-            phenotype_IDs:  names of phenotypes to load
-            impute:         imputation of missing values (default: True)
-            intersection:   restrict observation to those obseved in all phenotypes? (default: False)
+        Parameters
+        ----------
+        phenotype_IDs: iterable of IDs  
+            names of phenotypes to load
+        impute:
+            imputation of missing values (default: True)
+        intersection:
+            restrict observation to those obseved in all phenotypes? (default: False)
 
-        Returns:
-            phenotypes:     [N x P] scipy.array of phenotype values for P phenotypes
-            sample_idx_intersect:        index of individuals in phenotypes after filtering missing valuesS
+        Returns
+        -------
+        phenotypes:     
+             [N x P] scipy.array of phenotype values for P phenotypes
+        sample_idx_intersect:   
+             index of individuals in phenotypes after filtering missing valuesS
         """
         if phenotype_IDs is not None:
             I = SP.array([SP.nonzero(self.phenotype_ID==n)[0][0] for n in phenotype_IDs])
@@ -238,13 +265,18 @@ class pheno_reader_h5py_deprecated():
         #calculate overlap of missing values
         return phenotypes, sample_idx_intersect
 
-    def getPhenotypes(self,sample_idx=None,phenotype_IDs=None,center=True,impute=True,intersection=False):
-        """load Phenotypes
+    def getPhenotypes(self,sample_idx=None,phenotype_IDs=None,center=True,
+            impute=True,intersection=False):
+        """Load phenotypes
 
-        Args:
-            phenotype_IDs:  names of phenotypes to load
-            impute:         imputation of missing values (default: True)
-            intersection:   restrict observation to those obseved in all phenotypes? (default: False)
+        Parameters
+        ----------
+        phenotype_IDs:  
+            names of phenotypes to load
+        impute:         
+            imputation of missing values (default: True)
+        intersection:   
+            restrict observation to those obseved in all phenotypes? (default: False)
 
         Returns:
             phenotypes:     [N x P] scipy.array of phenotype values for P phenotypes
