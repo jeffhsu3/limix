@@ -1,4 +1,5 @@
-# Copyright(c) 2014, The LIMIX developers (Christoph Lippert, Paolo Francesco Casale, Oliver Stegle)
+# Copyright(c) 2014, The LIMIX developers (Christoph Lippert, Paolo Francesco
+#                                          Casale, Oliver Stegle)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,43 +24,42 @@ class genotype_reader_h5py():
     """A genotype reader using the HDF5 interface.
     """
 
-    def __init__(self,file_name):
+    def __init__(self, file_name):
         self.file_name = file_name
         self.load()
 
-    def load(self,cache_genotype=False,cache_phenotype=True):
+    def load(self, cache_genotype=False, cache_phenotype=True):
         """Load data file
 
         Parameters
         ----------
         cache_genotype : boolean
             load genotypes fully into memory (default: False)
-        cache_phenotype : 
+        cache_phenotype :
             load phentopyes fully intro memry (default: True)
         """
-        self.f = h5py.File(self.file_name,'r')
-        self.geno  = self.f['genotype']
-
-        #parse out these we always need for convenience
+        self.f = h5py.File(self.file_name, 'r')
+        self.geno = self.f['genotype']
+        # parse out these we always need for convenience
         self.geno_matrix = self.geno['matrix']
-        #dimensions
         self.num_samples = self.geno_matrix.shape[0]
         self.num_snps = self.geno_matrix.shape[1]
-
         self.sample_ID = self.geno['row_header']['sample_ID'][:]
-        position   = {
+        position = {
             "chrom":    self.geno['col_header']['chrom'][:],
             "pos":      self.geno['col_header']['pos'][:],
             }
         if 'pos_cum' in self.geno['col_header'].keys():
-            position['pos_cum']   = self.geno['col_header']['pos_cum'][:]
+            position['pos_cum'] = self.geno['col_header']['pos_cum'][:]
 
         if 'geno_ID' in self.geno['col_header'].keys():
-            self.geno_ID   = self.geno['col_header']['geno_ID'][:]
+            self.geno_ID = self.geno['col_header']['geno_ID'][:]
+        elif 'gdid' in self.geno['col_header'].keys():
+            self.geno_ID = self.geno['col_header']['gdid'][:]
         else:
-            self.geno_ID =  np.arange(self.num_snps)
+            self.geno_ID = np.arange(self.num_snps)
 
-        #cache?
+        # cache?
         if cache_genotype:
             self.geno_matrix = self.geno_matrix[:]
         self.position=pd.DataFrame(data=position,index=self.geno_ID)
@@ -67,10 +67,11 @@ class genotype_reader_h5py():
 
     def getGenotypes(self, sample_idx=None, idx_start=None, idx_end=None,
             chrom=None, pos_start=None, pos_end=None, center=True, unit=True,
-            impute_missing=False, snp_idx=None,windowsize=0):
+            impute_missing=False, snp_idx=None, windowsize=0):
         """Load genotypes.
-        Optionally the indices for loading subgroups the genotypes for all people
-        based on position of cumulative position.
+        
+        Optionally the indices for loading subgroups the genotypes for all 
+        people based on position of cumulative position.
         Positions can be given as (pos_start-pos_end on chrom)
         If both of these are None (default), then all genotypes are returned
 
@@ -141,7 +142,7 @@ class genotype_reader_h5py():
             assert pos_start[0]==pos_end[0], ("getGenoIndex only supports" 
                 "selection on a single chromosome")
             I = self.position["chrom"]==pos_start[0]
-            I = I & (self.postion["pos"]>=(pos_start[1]-windowsize)) &\
+            I = I & (self.position["pos"]>=(pos_start[1]-windowsize)) &\
                     (self.position["pos"]<(pos_end[1]+windowsize))
             I =  np.nonzero(I)[0]
             idx_start = I.min()
@@ -287,23 +288,24 @@ class genotype_reader_h5py():
                 return  sp.arange(self.geno_matrix.shape[1])
 
     def getPos(self,idx_start=None,idx_end=None,
-            pos_start=None,pos_end=None,chrom=None,
-            pos_cum_start=None,pos_cum_end=None):
+            pos_start=None,pos_end=None,chrom=None):
         """Get the positions of the genotypes
         Returns
         -------
         chromosome : 
-        position :
-        cumulative_position :
+        position_start :
+        pos_start : 
+        pos_end : 
+        chrom : 
         """
         if (idx_start is None) and (idx_end is None)\
                 and ((pos_start is not None) & (pos_end is not None) &\
                 (chrom is not None)) or ((pos_cum_start is not None) &\
                 (pos_cum_end is not None)):
-            idx_start,idx_end=self.getGenoIndex(pos_start=pos_start,
-                    pos_end=pos_end,chrom=chrom,
-                    pos_cum_start=pos_cum_start,
-                    pos_cum_end=pos_cum_end)
+            # Pos_cum_start and pos_cum_end removed
+            idx_start, idx_end=self.getGenoIndex(pos_start=pos_start,
+                    pos_end=pos_end,chrom=chrom)
+
         if (idx_start is not None) & (idx_end is not None):
             return self.position.iloc[idx_start:idx_end]
         else:
@@ -378,8 +380,8 @@ class genotype_reader_tables():
 
     def getGenotypes(self,sample_idx=None,idx_start=None,
             idx_end=None, pos_start=None, pos_end=None,chrom=None,
-            center=True,unit=True,pos_cum_start=None,
-            pos_cum_end=None,impute_missing=False,snp_idx=None):
+            center=True, unit=True, pos_cum_start=None,
+            pos_cum_end=None, impute_missing=False, snp_idx=None):
         """load genotypes.
         Optionally the indices for loading subgroups the genotypes for all people
         can be given in one out of three ways:

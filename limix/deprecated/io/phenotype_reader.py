@@ -82,22 +82,22 @@ class pheno_reader_tables():
         self.P = self.pheno_matrix.shape[1]
 
 
-    def getPhenotypes(self,phenotype_IDs=None,phenotype_query=None,
-            sample_idx=None,center=True,intersection=False):
+    def getPhenotypes(self, phenotype_IDs=None, phenotype_query=None,
+            sample_idx=None, center=True, intersection=False):
         """Load phenotypes
 
         Parameters
         ----------
-        phenotype_IDs:      
+        phenotype_IDs: list of IDs      
             names of phenotypes to load
-        phenotype_query:    
-            string hoding a pandas query (e.g. "(environment==1) & (phenotype_ID=='growth')"
+        phenotype_query: numexpr/pandas query string   
+            string holding a pandas query (e.g. "(environment==1) & (phenotype_ID=='growth')"
             selects all phenotypes that have a phenotype_ID equal to 
             growth under environment 1.
         sample_idx:         
             Boolean sample index for subsetting individuals
         center:             
-            Boolean: mean center (and mean-fill in missing values if 
+            Bmatrix_eQTL style snp annotation required for usingoolean: mean center (and mean-fill in missing values if 
             intersection==False)? (default True)
         impute:
             imputation of missing values (default: True)
@@ -116,17 +116,13 @@ class pheno_reader_tables():
         elif phenotype_query is not None:
             try:
                 I = self.index_frame.query(phenotype_query).values[:,0]
-
                 #if there are no results we won't actually get an exception, we just get an
                 #empty response
                 if len(I) == 0:
                     print "query '%s' yielded no results!" % (phenotype_query)
                     I = SP.zeros([0],dtype="int")
-
             except Exception, arg:
-
                 print "query '%s' yielded no results: %s" % (phenotype_query, str(arg))
-
                 I = SP.zeros([0],dtype="int")
         else:
             I = SP.arange(self.phenotype_ID.shape[0])
@@ -167,7 +163,6 @@ class pheno_reader_tables():
             try:
                 I = self.index_frame.query(phenotype_query).values[:,0]
             except Exception, arg:
-
                 print "query '%s' yielded no results: %s"%phenotype_query, str(arg)
 
                 I = SP.zeros([0],dtype="int")
@@ -265,7 +260,7 @@ class pheno_reader_h5py_deprecated():
         #calculate overlap of missing values
         return phenotypes, sample_idx_intersect
 
-    def getPhenotypes(self,sample_idx=None,phenotype_IDs=None,center=True,
+    def getPhenotypes(self, sample_idx=None, phenotype_IDs=None, center=True,
             impute=True,intersection=False):
         """Load phenotypes
 
@@ -277,10 +272,14 @@ class pheno_reader_h5py_deprecated():
             imputation of missing values (default: True)
         intersection:   
             restrict observation to those obseved in all phenotypes? (default: False)
+        center: boolean
+            whether to mean-center the phenotypes
 
         Returns:
-            phenotypes:     [N x P] scipy.array of phenotype values for P phenotypes
-            sample_idx_intersect:        index of individuals in phenotypes after filtering missing valuesS
+        phenotypes:     
+            [N x P] scipy.array of phenotype values for P phenotypes
+        sample_idx_intersect:
+            index of individuals in phenotypes after filtering missing valuesS
         """
         if phenotype_IDs is not None:
             I = SP.array([SP.nonzero(self.phenotype_ID==n)[0][0] for n in phenotype_IDs])

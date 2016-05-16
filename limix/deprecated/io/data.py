@@ -21,8 +21,8 @@ import limix.deprecated.io.phenotype_reader as pr
 import pandas as pd
 
 class QTLData(object):
-    """
-    This class is a mask to a the contents of a geno_reader and a pheno_reader or a subset thereof
+    """ This class is a mask to a the contents of a geno_reader and a 
+    pheno_reader or a subset thereof
     """
 
     def __init__(self,geno_reader=None,pheno_reader=None):
@@ -33,7 +33,8 @@ class QTLData(object):
         self.geno_ID = self.geno_reader.geno_ID
         self.phenotype_ID = self.pheno_reader.phenotype_ID
         self.geno_snp_idx = None      #SNP indices
-        self.sample_idx = du.merge_indices([self.geno_reader.sample_ID, self.pheno_reader.sample_ID],header=["geno","pheno"],join="inner")      #index of individuals
+        self.sample_idx = du.merge_indices([self.geno_reader.sample_ID, 
+            self.pheno_reader.sample_ID],header=["geno","pheno"],join="inner")      #index of individuals
         self.sample_ID = self.geno_reader.sample_ID[ sp.array(self.sample_idx["geno"])]
         self.num_snps = self.geno_reader.num_snps
 
@@ -149,34 +150,51 @@ class QTLData(object):
 
 
 
-    def getPhenotypes(self,phenotype_IDs=None,phenotype_query=None,center=True,intersection=False):
-        """load Phenotypes
+    def getPhenotypes(self,phenotype_IDs=None, phenotype_query=None, 
+            center=True,intersection=False):
+        """Load Phenotypes
 
-        Args:
-            idx_start:      phenotype indices to load (start individual index)
-            idx_end:       phenotype indices to load (end individual index)
-            phenotype_IDs:  names of phenotypes to load
-            impute:         imputation of missing values (default: True)
-            intersection:   restrict observation to those obseved in all phenotypes (true) or at least in one phenotype (false)? (default: False)
+        Arguments
+        ---------
+        idx_start: int      
+            phenotype indices to load (start individual index)
+        idx_end: int       
+            phenotype indices to load (end individual index)
+        phenotype_IDs:  
+            names of phenotypes to load
+        impute:         
+            imputation of missing values (default: True)
+        intersection:   
+            restrict observation to those obseved in all phenotypes 
+            (true) or at least in one phenotype (false)? (default: False)
 
-        Returns:
-            phenotypes:     phenotype values
-            sample_idx_intersect:        index of individuals in phenotypes after filtering missing values
+        Returns
+        -------
+        phenotypes:     
+            phenotype values
+        sample_idx_intersect:
+            index of individuals in phenotypes after filtering missing values
         """
 
-        phenotypes, sample_idx_intersect = self.pheno_reader.getPhenotypes(sample_idx=sp.array(self.sample_idx["pheno"]),phenotype_IDs=phenotype_IDs,phenotype_query=phenotype_query,center=center,intersection=intersection)
+        phenotypes, sample_idx_intersect = self.pheno_reader.getPhenotypes(
+                sample_idx=sp.array(self.sample_idx["pheno"]),
+                phenotype_IDs=phenotype_IDs,center=center,intersection=intersection)
+
         return phenotypes, sample_idx_intersect
 
-    def getPos(self,idx_start=None,idx_end=None,pos_start=None,pos_end=None,chrom=None,windowsize=0.0):
-        """
-        get the positions of the genotypes
+    def getPos(self,idx_start=None,idx_end=None,pos_start=None,pos_end=None,
+            chrom=None,windowsize=0.0):
+        """Get the positions of the genotypes
 
-        Returns:
-            chromosome
-            position
-            cumulative_position
+        Arguments
+        ---------
+        chromosome: 
+        position: 
+        cumulative_position:
         """
-        query_idx = self.range_query_geno_local(idx_start=idx_start, idx_end=idx_end, chrom=chrom, pos_start=pos_start, pos_end=pos_end, windowsize=windowsize)
+        query_idx = self.range_query_geno_local(idx_start=idx_start, 
+                idx_end=idx_end, chrom=chrom, pos_start=pos_start, 
+                pos_end=pos_end, windowsize=windowsize)
         if query_idx is None:
             return self.geno_pos
         else:
@@ -217,20 +235,36 @@ class QTLData(object):
 
         return C
 
-    def subsample_phenotypes(self,phenotype_IDs=None,phenotype_query=None,center=True,intersection=False):
-        """load Phenotypes
+    def subsample_phenotypes(self, phenotype_IDs=None, phenotype_query=None,
+            center=True, intersection=False):
+        """Load phenotypes
 
-        Args:
-            idx_start:      phenotype indices to load (start individual index)
-            idx_end:       phenotype indices to load (end individual index)
-            phenotype_IDs:  names of phenotypes to load
-            center:         imputation of missing values (default: True)
-            intersection:   restrict observation to those obseved in all phenotypes (true) or at least in one phenotype (false)? (default: False)
+        Arguments
+        ---------
+        idx_start: interger    
+            phenotype indices to load (start individual index)
+        idx_end: integer
+            phenotype indices to load (end individual index)
+        phenotype_IDs: list  
+            names of phenotypes to load
+        center: bool
+            imputation of missing values (default: True)
+        intersection: bool
+            restrict observation to those obseved in all phenotypes (true) or 
+            at least in one phenotype (false)? (default: False)
 
-        Returns:
-            phenotypes:     phenotype values
-            sample_idx_intersect:        index of individuals in phenotypes after filtering missing values
+        Returns
+        -------
+        phenotypes:     
+            phenotype values
+        sample_idx_intersect:        
+            index of individuals in phenotypes after filtering missing values
         """
 
-        phenotypes, sample_idx_intersect = self.pheno_reader.getPhenotypes(phenotype_query=phenotype_query,sample_idx= sp.array(self.sample_idx["pheno"]),phenotype_IDs=phenotype_IDs,center=center,intersection=intersection)
-        return self.subsample(rows=sample_idx_intersect,cols_pheno=None,cols_geno=None,idx_start=None,idx_end=None,pos_start=None,pos_end=None,chrom=None)
+        phenotypes, sample_idx_intersect = self.pheno_reader.getPhenotypes(
+                sample_idx= sp.array(self.sample_idx["pheno"]),
+                phenotype_IDs=phenotype_IDs,center=center,
+                intersection=intersection)
+        return self.subsample(rows=sample_idx_intersect,cols_pheno=None,
+                cols_geno=None,idx_start=None,idx_end=None,pos_start=None,
+                pos_end=None,chrom=None)

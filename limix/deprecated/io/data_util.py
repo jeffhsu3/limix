@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import scipy as sp 
+import numpy as np
 import pandas as pd
 
 
@@ -24,32 +24,34 @@ except:
     pass
 
 def estCumPos(position,offset=0,chrom_len=None):
-    '''
-    compute the cumulative position of each variant given the position and the chromosome
-    Also return the starting cumulativeposition of each chromosome
+    ''' Compute the cumulative position of each variant given the position 
+    and the chromosome. Also return the starting cumulativeposition of each 
+    chromosome
 
-    Args:
-        position:   pandas DataFrame of basepair positions (key='pos') and chromosome values (key='chrom')
-                    The DataFrame will be updated with field 'pos_cum'
-        chrom_len:  vector with predefined chromosome length
-        offset:     offset between chromosomes for cumulative position (default 0 bp)
+    Arguments
+    ---------
+    position :   pandas DataFrame of basepair positions (key='pos') and 
+    chromosome values (key='chrom')
+                The DataFrame will be updated with field 'pos_cum'
+    chrom_len:  vector with predefined chromosome length
+    offset:     offset between chromosomes for cumulative position (default 0 bp)
     
-    Returns:
-        chrom_pos,position:
-        chrom_pos:  numpy.array of starting cumulative positions for each chromosome
-        position:   augmented position object where cumulative positions are defined
+    Returns
+    -------
+    chrom_pos:  numpy.array of starting cumulative positions for each chromosome
+    position:   augmented position object where cumulative positions are defined
     '''
     RV = position.copy()
-    chromvals =  sp.unique(position['chrom'])# sp.unique is always sorted
-    chrom_pos_cum= sp.zeros_like(chromvals)#get the starting position of each Chrom
-    pos_cum= sp.zeros_like(position.shape[0])
+    chromvals =  np.unique(position['chrom'])# np.unique is always sorted
+    chrom_pos_cum= np.zeros_like(chromvals)#get the starting position of each Chrom
+    pos_cum= np.zeros_like(position.shape[0])
     if not 'pos_cum' in position:
-        RV["pos_cum"]= sp.zeros_like(position['pos'])#get the cum_pos of each variant.
+        RV["pos_cum"]= np.zeros_like(position['pos'])#get the cum_pos of each variant.
     pos_cum=RV['pos_cum'].values
     maxpos_cum=0
     for i,mychrom in enumerate(chromvals):
         chrom_pos_cum[i] = maxpos_cum
-        i_chr=position['chrom']==mychrom
+        i_chr = position['chrom']== mychrom
         if chrom_len is None:
             maxpos = position['pos'][i_chr].max()+offset
         else:
@@ -81,33 +83,35 @@ def imputeMissing(X, center=True, unit=True, betaNotUnitVariance=False, betaA=1.
         X:      scipy.array of standardized SNPs with scipy.float64 values
     '''
     typeX=X.dtype
-    if typeX!= sp.int8:
+    if typeX!= np.int8:
         iNanX = X!=X
     else:
         iNanX = X==-9
     if iNanX.any() or betaNotUnitVariance:
         if cparser and center and (unit or betaNotUnitVariance):
             print "using C-based imputer"
-            if X.flags["C_CONTIGUOUS"] and typeX== sp.float32:
-                parser.standardizefloatCAAA(X,betaNotUnitVariance=betaNotUnitVariance,betaA=betaA,betaB=betaB)
-                X= sp.array(X,dtype= sp.float64)
-            elif X.flags["C_CONTIGUOUS"] and typeX== sp.float64:
+            if X.flags["C_CONTIGUOUS"] and typeX== np.float32:
+                parser.standardizefloatCAAA(X,
+                        betaNotUnitVariance=betaNotUnitVariance,
+                        betaA=betaA,betaB=betaB)
+                X= np.array(X,dtype= np.float64)
+            elif X.flags["C_CONTIGUOUS"] and typeX== np.float64:
                 parser.standardizedoubleCAAA(X,betaNotUnitVariance=betaNotUnitVariance,betaA=betaA,betaB=betaB)
-            elif X.flags["F_CONTIGUOUS"] and typeX== sp.float32:
+            elif X.flags["F_CONTIGUOUS"] and typeX== np.float32:
                 parser.standardizefloatFAAA(X,betaNotUnitVariance=betaNotUnitVariance,betaA=betaA,betaB=betaB)
-                X= sp.array(X,dtype= sp.float64)
-            elif X.flags["F_CONTIGUOUS"] and typeX== sp.float64:
+                X= np.array(X,dtype= np.float64)
+            elif X.flags["F_CONTIGUOUS"] and typeX== np.float64:
                 parser.standardizedoubleFAAA(X,betaNotUnitVariance=betaNotUnitVariance,betaA=betaA,betaB=betaB)
             else:
-                X= sp.array(X,order="F",dtype= sp.float64)
-                X[iNanX]= sp.nan
+                X= np.array(X,order="F",dtype= np.float64)
+                X[iNanX]= np.nan
                 parser.standardizedoubleFAAA(X,betaNotUnitVariance=betaNotUnitVariance,betaA=betaA,betaB=betaB)
         elif betaNotUnitVariance:
                 raise NotImplementedError("Beta(betaA,betaB) standardization only in C-based parser, but not found")
         else:
             nObsX = (~iNanX).sum(0)
-            if typeX!= sp.float64:
-                X= sp.array(X,dtype= sp.float64)
+            if typeX!= np.float64:
+                X= np.array(X,dtype= np.float64)
             X[iNanX] = 0.0
             sumX = (X).sum(0)                
             meanX = sumX/nObsX
@@ -116,16 +120,16 @@ def imputeMissing(X, center=True, unit=True, betaNotUnitVariance=False, betaA=1.
                 X[iNanX] = 0.0
                 X_=X
             else:
-                mean= sp.tile(meanX,(X.shape[0],1))
+                mean= np.tile(meanX,(X.shape[0],1))
                 X[iNanX]=mean[iNanX]
                 X_=X-mean
             if unit:
-                stdX =  sp.sqrt((X_*X_).sum(0)/nObsX)
+                stdX =  np.sqrt((X_*X_).sum(0)/nObsX)
                 stdX[stdX==0.0]=1.0
                 X/=stdX
     else:
-        if X.dtype!= sp.float64:
-            X= sp.array(X,dtype= sp.float64)
+        if X.dtype!= np.float64:
+            X= np.array(X,dtype= np.float64)
         if center:
             X-= X.mean(axis=0)
         if unit:
@@ -153,7 +157,10 @@ def merge_indices(indices,header=None,join="inner"):
             header_=[i]
         else:
             header_=[header[i]]
-        indexpd.append(pd.DataFrame(data= sp.arange(len(index)),index=index,columns=header_) )
+        temp_frame = pd.DataFrame(np.arange(len(index)), index=index,
+                columns=header_)
+        temp_frame = temp_frame.ix[np.logical_not(pd.isnull(temp_frame.index)), :]
+        indexpd.append(temp_frame)
     ret = pd.concat(objs=indexpd, axis=1, join=join)
     return ret
 
