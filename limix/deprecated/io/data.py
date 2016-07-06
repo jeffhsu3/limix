@@ -39,12 +39,15 @@ class QTLData(object):
         self.num_snps = self.geno_reader.num_snps
 
 
-    def range_query_geno_local(self, idx_start=None, idx_end=None, chrom=None,pos_start=None, pos_end=None,windowsize=0):
+    def range_query_geno_local(self, idx_start=None, idx_end=None, 
+            chrom=None, pos_start=None, pos_end=None, windowsize=0):
         """
         return an index for a range query on the genotypes
         """
-        if idx_start==None and idx_end==None and pos_start==None and pos_end==None and chrom==None:
-            return  sp.arange(0,self.num_snps)
+        # The logic here should be similar to that of genotype reader 
+        if idx_start==None and idx_end==None and pos_start==None\
+                and pos_end==None and chrom==None:
+            return sp.arange(0,self.num_snps)
         elif idx_start is not None or idx_end is not None:
             if idx_start is None:
                 idx_start = 0
@@ -57,7 +60,6 @@ class QTLData(object):
         elif pos_start is not None or pos_end is not None:
             if pos_start is not None and pos_end is not None:
                 assert pos_start[0] == pos_end[0], "chromosomes have to match"
-
             if pos_start is None:
                 idx_larger =  sp.ones(self.num_snps,dtype=bool)
             else:
@@ -86,8 +88,10 @@ class QTLData(object):
             return self.geno_snp_idx[res]
 
 
-    def getGenotypes(self,idx_start=None,idx_end=None,pos_start=None,pos_end=None,windowsize=0,chrom=None,center=True,unit=True,impute_missing=False,cast_float=True):
-        """return genotypes.
+    def getGenotypes(self,idx_start=None, idx_end=None, pos_start=None,
+            pos_end=None, windowsize=0, chrom=None, center=True, unit=True,
+            impute_missing=False, cast_float=True):
+        """Return genotypes.
         Optionally the indices for loading subgroups the genotypes for all people
         can be given in one out of three ways:
         - 0-based indexing (idx_start-idx_end)
@@ -95,16 +99,26 @@ class QTLData(object):
         - cumulative position (pos_cum_start-pos_cum_end)
         If all these are None (default), then all genotypes are returned
 
-        Args:
-            idx_start:         genotype index based selection (start index)
-            idx_end:         genotype index based selection (end index)
-            pos_start:       position based selection (start position)
-            pos_end:       position based selection (end position)
-            chrom:      position based selection (chromosome)
-            pos_cum_start:   cumulative position based selection (start position)
-            pos_cum_end:   cumulative position based selection (end position)
-            impute_missing: Boolean indicator variable if missing values should be imputed
-            cast_float: Boolean indicator variable if output genotypes should be casted as float
+        Arguments
+        ---------
+        idx_start : int         
+            genotype index based selection (start index)
+        idx_end : int
+            genotype index based selection (end index)
+        pos_start : tuple      
+            position based selection (chrom, start position)
+        pos_end : tuple       
+            position based selection (end position)
+        chrom:      
+            position based selection (chromosome)
+        pos_cum_start:   
+            cumulative position based selection (start position)
+        pos_cum_end:   
+            cumulative position based selection (end position)
+        impute_missing: boolean 
+            Indicator variable if missing values should be imputed
+        cast_float: boolean 
+            Indicator variable if output genotypes should be casted as float
         Returns:
             X:          scipy.array of genotype values
         """
@@ -200,20 +214,29 @@ class QTLData(object):
         else:
             return self.geno_pos.iloc[query_idx]
 
-    def subsample(self,rows=None,cols_pheno=None,cols_geno=None,idx_start=None,idx_end=None,pos_start=None,pos_end=None,chrom=None,windowsize=0.0):
+    def subsample(self, rows=None, cols_pheno=None, cols_geno=None,
+            idx_start=None,idx_end=None,pos_start=None,pos_end=None,
+            chrom=None,windowsize=0.0):
         """sample a particular set of individuals (rows) or phenotypes (cols_pheno) or genotypes (cols_geno)
 
-        Args:
-            rows:           indices for a set of individuals
-            cols_pheno:     indices for a set of phenotypes
-            cols_geno:      indices for a set of SNPs
+        Arguments
+        ---------
+        rows:
+            indices for a set of individuals
+        cols_pheno:
+            indices for a set of phenotypes
+        cols_geno:
+            indices for a set of SNPs
 
         Returns:
             QTLdata object holding the specified subset of the data
         """
         if not (idx_start==None and idx_end==None and pos_start==None and pos_end==None and chrom==None):
-            query_idx = self.range_query_geno_local(idx_start=idx_start, idx_end=idx_end, chrom=chrom, pos_start=pos_start, pos_end=pos_end, windowsize=windowsize)
-            return self.subsample(rows=rows,cols_pheno=cols_pheno,cols_geno=query_idx,idx_start=None,idx_end=None,pos_start=None,pos_end=None,chrom=None)
+            query_idx = self.range_query_geno_local(idx_start=idx_start, idx_end=idx_end, 
+                    chrom=chrom, pos_start=pos_start, pos_end=pos_end, windowsize=windowsize)
+            return self.subsample(rows=rows, cols_pheno=cols_pheno,
+                    cols_geno=query_idx, idx_start=None,
+                    idx_end=None, pos_start=None, pos_end=None, chrom=None)
         C = copy.copy(self)
 
         if rows is not None:

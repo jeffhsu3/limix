@@ -1,5 +1,5 @@
 import limix
-from mtSet import MTSet
+from .mtSet import MTSet
 
 
 def test():

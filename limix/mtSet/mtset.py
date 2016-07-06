@@ -225,7 +225,7 @@ class MTSet():
         # set params0 from null if params0 is None
         if params0 is None:
             if self.null is None:
-                if verbose:     print ".. fitting null model"
+                if verbose: print(".. fitting null model")
                 self.fitNull()
             if self.bgRE:
                 params0 = sp.concatenate([self.null['params0_g'], self.null['params0_n']])
